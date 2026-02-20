@@ -70,12 +70,12 @@ class PvacClient:
     def _setup_ffi(self):
         L = self._lib
 
-        # params / keygen
+        # params
         L.pvac_default_params.restype = ctypes.c_void_p
         L.pvac_keygen_from_seed.argtypes = [ctypes.c_void_p, ctypes.c_uint8 * 32,
                                              ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(ctypes.c_void_p)]
 
-        # encrypt / decrypt
+    
         L.pvac_enc_value_seeded.restype = ctypes.c_void_p
         L.pvac_enc_value_seeded.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint64, ctypes.c_uint8 * 32]
         L.pvac_enc_zero_seeded.restype = ctypes.c_void_p
@@ -124,47 +124,41 @@ class PvacClient:
         L.pvac_verify_zero_bound.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p,
                                               ctypes.c_uint8 * 32]
 
-        # Pedersen commitment: amount * G + blinding * H → 32 bytes
         L.pvac_pedersen_commit.restype = None
         L.pvac_pedersen_commit.argtypes = [ctypes.c_uint64, ctypes.c_uint8 * 32, ctypes.c_uint8 * 32]
 
-        # serialization — cipher
         L.pvac_serialize_cipher.restype = ctypes.POINTER(ctypes.c_uint8)
         L.pvac_serialize_cipher.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_size_t)]
         L.pvac_deserialize_cipher.restype = ctypes.c_void_p
         L.pvac_deserialize_cipher.argtypes = [ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t]
 
-        # serialization — pubkey
         L.pvac_serialize_pubkey.restype = ctypes.POINTER(ctypes.c_uint8)
         L.pvac_serialize_pubkey.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_size_t)]
 
-        # serialization — range proof
         L.pvac_serialize_range_proof.restype = ctypes.POINTER(ctypes.c_uint8)
         L.pvac_serialize_range_proof.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_size_t)]
         L.pvac_deserialize_range_proof.restype = ctypes.c_void_p
         L.pvac_deserialize_range_proof.argtypes = [ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t]
 
-        # serialization — zero proof
         L.pvac_serialize_zero_proof.restype = ctypes.POINTER(ctypes.c_uint8)
         L.pvac_serialize_zero_proof.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_size_t)]
         L.pvac_deserialize_zero_proof.restype = ctypes.c_void_p
         L.pvac_deserialize_zero_proof.argtypes = [ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t]
 
-        # free
         L.pvac_free_params.argtypes = [ctypes.c_void_p]
         L.pvac_free_cipher.argtypes = [ctypes.c_void_p]
         L.pvac_free_bytes.argtypes = [ctypes.POINTER(ctypes.c_uint8)]
         L.pvac_free_zero_proof.argtypes = [ctypes.c_void_p]
         L.pvac_free_range_proof.argtypes = [ctypes.c_void_p]
 
-    # ── helpers ──────────────────────────────────────────────
+
 
     @staticmethod
     def make_seed(tx_hash, epoch_id, purpose):
         buf = f"OCTRA_FHE_SEED_V1|{tx_hash}|{epoch_id}|{purpose}"
         return hashlib.sha256(buf.encode()).digest()
 
-    # ── encrypt / decrypt ────────────────────────────────────
+
 
     def encrypt(self, value, seed_bytes):
         seed_arr = (ctypes.c_uint8 * 32)(*seed_bytes[:32])
@@ -191,7 +185,6 @@ class PvacClient:
         return self._lib.pvac_enc_value_fp_seeded(
             self.pk, self.sk, ctypes.c_uint64(lo), ctypes.c_uint64(hi), seed_arr)
 
-    # ── arithmetic ───────────────────────────────────────────
 
     def ct_add(self, ct_a, ct_b):
         return self._lib.pvac_ct_add(self.pk, ct_a, ct_b)
@@ -206,7 +199,6 @@ class PvacClient:
     def ct_scale(self, ct, scalar):
         return self._lib.pvac_ct_scale(self.pk, ct, ctypes.c_int64(scalar))
 
-    # ── commitment ──────────────────────────────────────────
 
     def commit(self, ct_handle):
         """commit_ct(pk, ct) → 32 bytes."""
@@ -214,7 +206,6 @@ class PvacClient:
         self._lib.pvac_commit_ct(self.pk, ct_handle, out)
         return bytes(out)
 
-    # ── range proof (client-side, uses sk) ───────────────────
 
     def make_range_proof(self, ct_handle, value):
         """Prove ct encrypts value ∈ [0, 2^64).  Requires sk (client only)."""
@@ -224,8 +215,6 @@ class PvacClient:
         """Verify range proof (pk only, no sk needed)."""
         return bool(self._lib.pvac_verify_range(self.pk, ct_handle, rp_handle))
 
-    # ── zero proof (client-side, uses sk) ──────────────────────
-
     def make_zero_proof(self, ct_handle):
         """Prove ct encrypts 0 using Bulletproofs R1CS circuit. Requires sk (client only)."""
         return self._lib.pvac_make_zero_proof(self.pk, self.sk, ct_handle)
@@ -234,7 +223,6 @@ class PvacClient:
         """Verify zero proof (pk only, no sk needed)."""
         return bool(self._lib.pvac_verify_zero(self.pk, ct_handle, zp_handle))
 
-    # ── bound zero proof (private claim) ──────────────────────
 
     def make_zero_proof_bound(self, ct_handle, amount, blinding_bytes):
         """Prove ct encrypts `amount` with Pedersen binding. Requires sk (client only).
@@ -250,7 +238,6 @@ class PvacClient:
         self._lib.pvac_pedersen_commit(ctypes.c_uint64(amount), blind_arr, out)
         return bytes(out)
 
-    # ── serialization helpers ────────────────────────────────
 
     def _serialize_ptr(self, func, handle):
         sz = ctypes.c_size_t()
@@ -286,8 +273,6 @@ class PvacClient:
         arr = (ctypes.c_uint8 * len(data))(*data)
         return self._lib.pvac_deserialize_zero_proof(arr, ctypes.c_size_t(len(data)))
 
-    # ── encode / decode (string ↔ handle) ────────────────────
-
     def encode_cipher(self, ct_handle):
         raw = self.serialize_cipher(ct_handle)
         return self.HFHE_PREFIX + base64.b64encode(raw).decode()
@@ -307,8 +292,6 @@ class PvacClient:
         raw = self.serialize_zero_proof(zp_handle)
         return self.ZKZP_PREFIX + base64.b64encode(raw).decode()
 
-    # ── free ─────────────────────────────────────────────────
-
     def free_cipher(self, ct_handle):
         if ct_handle:
             self._lib.pvac_free_cipher(ct_handle)
@@ -320,8 +303,6 @@ class PvacClient:
     def free_zero_proof(self, zp_handle):
         if zp_handle:
             self._lib.pvac_free_zero_proof(zp_handle)
-
-    # ── high-level helpers ───────────────────────────────────
 
     def get_balance(self, cipher_str):
         """Decrypt an encoded cipher string to an integer value.
