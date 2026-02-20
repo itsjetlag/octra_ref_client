@@ -47,9 +47,9 @@ sudo apt update && sudo apt install -y g++ make python3 python3-venv python3-pip
 
 ## links
 
-devnet RPC:  https://devnet.octra.com
-scan: https://scan.octra.com 
-faucet: https://faucet-devnet.octra.com (10 OCT every day)
+- devnet RPC: https://devnet.octra.com
+- scan: https://scan.octra.com 
+- faucet: https://faucet-devnet.octra.com (10 OCT every day)
 
 ## config
 
