@@ -2,11 +2,7 @@
 set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
-
-echo ""
-echo "  ╔══════════════════════════════════════╗"
-echo "  ║   octra devnet client — setup        ║"
-echo "  ╚══════════════════════════════════════╝"
+═══╝"
 echo ""
 echo "  dir: $DIR"
 echo ""
@@ -23,7 +19,7 @@ check_cmd python3
 echo "[ok] g++ and python3 found"
 
 echo ""
-echo "--- building libpvac (FHE + ZK library) ---"
+echo "--- building libpvac (HFHE + ZK lib) ---"
 cd "$DIR/pvac"
 make clean 2>/dev/null || true
 make
@@ -63,10 +59,6 @@ else
     PYTHON="python3"
 fi
 
-echo ""
-echo "  ╔══════════════════════════════════════╗"
-echo "  ║   setup complete!                    ║"
-echo "  ╚══════════════════════════════════════╝"
 echo ""
 echo "  run:  $PYTHON $DIR/cli.py"
 echo ""
